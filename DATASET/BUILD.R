@@ -141,7 +141,7 @@ renewable.electricity <- subset(tpf.ipc, (substring(IPC, 1, 7) == 'H01M004' & as
                                 IPC == 'C10J003/86' |
                                 substring(IPC, 1, 7) == 'F03G005') # F03G 5/00-5/08 
                                
-                               
+##                               
 electricity.storage <-   rbind(subset(tpf.ipc, IPC == 'B60K006/28'),
                                subset(tpf.ipc, IPC == 'B60W010/26'),
                                subset(tpf.ipc, IPC == 'H01M010/44'),
@@ -153,3 +153,15 @@ electricity.storage <-   rbind(subset(tpf.ipc, IPC == 'B60K006/28'),
                                )
                                
                                
+## Subset Selecting 
+electricity.sector <- subset(tpf.ipc, Family_id %in% c(efficiency.improving$Family_id,
+                                                       fossil.fuel$Family_id,
+                                                       renewable.electricity$Family_id,
+                                                       electricity.storage$Family_id))
+##  
+electricity.sector$storage <- electricity.sector$renewable <- electricity.sector$fossil <- electricity.sector$efficiency <- 0
+#colnames(electricity.sector)
+electricity.sector[electricity.sector$IPC %in% efficiency.improving$IPC,6] <- 1
+electricity.sector[electricity.sector$IPC %in% fossil.fuel$IPC,7] <- 1
+electricity.sector[electricity.sector$IPC %in% renewable.electricity$IPC,8] <- 1
+electricity.sector[electricity.sector$IPC %in% electricity.storage$IPC,9] <- 1
