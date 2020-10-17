@@ -165,3 +165,15 @@ electricity.sector[electricity.sector$IPC %in% efficiency.improving$IPC,6] <- 1
 electricity.sector[electricity.sector$IPC %in% fossil.fuel$IPC,7] <- 1
 electricity.sector[electricity.sector$IPC %in% renewable.electricity$IPC,8] <- 1
 electricity.sector[electricity.sector$IPC %in% electricity.storage$IPC,9] <- 1
+
+
+##
+electricity.alternative <- subset(tpf.ipc, !Family_id %in% unique(electricity.sector$Family_id) &
+                                  IPC %in% unique(subset(electricity.sector, 
+                                                         fossil+renewable+efficiency+storage==0)$IPC))
+
+
+## #
+write.csv(electricity.sector, 'electricity_sector.csv', row.names = FALSE)
+write.csv(electricity.alternative, 'electricity_alternative.csv', row.names = FALSE)
+
