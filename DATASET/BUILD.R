@@ -172,8 +172,13 @@ electricity.alternative <- subset(tpf.ipc, !Family_id %in% unique(electricity.se
                                   IPC %in% unique(subset(electricity.sector, 
                                                          fossil+renewable+efficiency+storage==0)$IPC))
 
+##
+electricity.isolation <- subset(tpf.ipc, !Family_id %in% c(electricity.sector$Family_id,
+                                                           electricity.alternative$Family_id))
 
 ## #
 write.csv(electricity.sector, 'electricity_sector.csv', row.names = FALSE)
 write.csv(electricity.alternative, 'electricity_alternative.csv', row.names = FALSE)
+
+write.csv(electricity.isolation, 'electricity_isolation.csv', row.names = FALSE)
 
