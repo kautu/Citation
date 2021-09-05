@@ -151,7 +151,17 @@ electricity.storage <-   rbind(subset(tpf.ipc, IPC == 'B60K006/28'),
                                subset(tpf.ipc, IPC == 'H02J007/00'),
                                subset(tpf.ipc, IPC == 'H02J015/00')
                                )
-                               
+  
+
+
+## Adding the identified symbols for Family Component
+fossil.fuel$component <- paste(fossil.fuel$Family_id, 'F', sep = '')
+renewable.electricity$component <- paste(renewable.electricity$Family_id, 'R', sep = '')
+efficiency.improving$component <- paste(efficiency.improving$Family_id, 'I', sep = '')
+electricity.storage$component <- paste(electricity.storage$Family_id, 'S', sep = '')
+
+
+
                                
 ## Subset Selecting 
 electricity.sector <- subset(tpf.ipc, Family_id %in% c(efficiency.improving$Family_id,
