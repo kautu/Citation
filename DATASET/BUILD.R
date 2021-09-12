@@ -154,15 +154,110 @@ electricity.storage <-   rbind(subset(tpf.ipc, IPC == 'B60K006/28'),
   
 
 
-## Adding the identified symbols for Family Component
+## Adding the identified symbols for Family Component 
 fossil.fuel$component <- paste(fossil.fuel$Family_id, 'F', sep = '')
 renewable.electricity$component <- paste(renewable.electricity$Family_id, 'R', sep = '')
 efficiency.improving$component <- paste(efficiency.improving$Family_id, 'I', sep = '')
 electricity.storage$component <- paste(electricity.storage$Family_id, 'S', sep = '')
 
+energy.triadic <- rbind(efficiency.improving, fossil.fuel, renewable.electricity, electricity.storage)
 
 
-                               
+## Simplified the compounding Family Component
+
+# avoiding the ambiguity for the overlapping component 
+appln.unique <- energy.triadic %>% 
+  group_by(Appln_id) %>% 
+  summarise(n = n_distinct(FC)) %>% 
+  filter(n > 1)
+# the compounding Family component with the multiple category belongings
+energy.triadic[which(energy.triadic$Appln_id %in% appln.unique$Appln_id),]$FC <- paste(energy.triadic$Family_id[which(energy.triadic$Appln_id %in% appln.unique$Appln_id)], 
+                                                                                       'c', sep = '')
+
+## connections between the patent application and patent family
+liasion.triadic <- energy.triadic %>% 
+  distinct(Appln_id, FC)
+
+# Original Citation
+epo.citations <- na.omit(subset(as.tibble(fread('201902_EP_Citations.txt', 
+                                                select = c('Citing_pub_date', 'Citing_app_nbr', 'Citing_appln_id', 'Cited_Appln_id', 'Citn_Category'))), 
+                                Citing_appln_id %in% energy.triadic$Appln_id | Cited_Appln_id %in% energy.triadic$Appln_id) ) %>% 
+  distinct(Citing_appln_id, Cited_Appln_id, .keep_all = TRUE)
+
+# Family Component Citation Network
+epo.triadic <- epo.citations %>% 
+  left_join(liasion.triadic, by = c('Citing_appln_id' = 'Appln_id')) %>% 
+  left_join(liasion.triadic, by = c('Cited_Appln_id' = 'Appln_id'), 
+            suffix = c('_Citing', '_Cited')) %>% 
+  filter(is.na(FC_Citing) == FALSE & is.na(FC_Cited) == FALSE) %>% 
+  #distinct(FC_Citing, FC_Cited, .keep_all = TRUE)
+  group_by(FC_Citing, FC_Cited) %>% 
+  summarise(weight = log(1+n()))
+
+epo.triadic$id <- row.names(epo.triadic)
+colnames(epo.triadic)[1:2] <- c('source', 'target')
+
+
+epo.graph <- simplify(graph_from_data_frame(subset(epo.triadic, source != target), directed = FALSE))
+epo.community <- cluster_fast_greedy(epo.graph, 
+                                     weights = E(epo.graph)$weight) 
+
+node.centrality <- as.data.frame(matrix(0, length(V(epo.graph)), 3))
+colnames(node.centrality) <- c('node', 'centr_degree', 'centr_eigen')
+node.centrality[,1] <- V(epo.graph)$name
+node.centrality[,2] <- centr_degree(epo.graph)$res
+node.centrality[,3] <- centr_eigen(epo.graph, directed = FALSE)$vector
+node.centrality$membership <- membership(epo.community)
+
+# Identified Communities with the inter-connections
+community.triadic <- epo.triadic %>% 
+  left_join(node.centrality[,-2], by = c('source' = 'node')) %>% 
+  left_join(node.centrality[,-2], by = c('target' = 'node'),  suffix = c('_source', '_target')) %>% 
+  filter(membership_source != membership_target) %>% 
+  group_by(membership_source, membership_target) %>% 
+  summarise(n = n())
+
+community.graph <- simplify(graph_from_data_frame(community.triadic, directed = FALSE))
+
+#
+length(unique(c(community.triadic$membership_source, 
+                community.triadic$membership_target))) / length(epo.community)
+
+## Spectral Clustering
+set.seed(817)
+
+laplacian <- laplacian_matrix(community.graph)
+eigenvalues <- eigen(laplacian)$value
+plot(eigenvalues[1:50])
+#
+category.grouping <- as.data.frame(matrix(0, 72, 7))
+category.grouping[,1] <- V(community.graph)$name
+category.grouping[,2:10] <- eigen(laplacian)$vectors[,1:9]
+
+clustering <- kmeans(category.grouping[,2:4], 6)
+
+category.cluster <- as.data.frame(matrix(0,72, 2))
+category.cluster[,1] <- V(community.graph)$name
+category.cluster[,2] <- clustering$cluster
+colnames(category.cluster) <- c('node', 'cluster')
+
+clustering$size
+
+community.cluster <- graph_from_data_frame(d = as_data_frame(community.graph, what = "edges"),
+                                           vertices = category.cluster, directed = FALSE)
+#
+ggraph(community.cluster, #layout = 'sugiyama'
+       layout = 'centrality', cent = centrality_betweenness() ) +
+  geom_edge_link(color = "lightgrey")+ 
+  geom_node_point(aes(size = centrality_eigen(), color = as.factor(cluster)))+
+  geom_node_text(aes(label = name), size = 5, repel = TRUE)+
+  scale_color_discrete() +
+  theme_graph()
+
+
+
+
+##                               
 ## Subset Selecting 
 electricity.sector <- subset(tpf.ipc, Family_id %in% c(efficiency.improving$Family_id,
                                                        fossil.fuel$Family_id,
