@@ -3,6 +3,10 @@ library('tibble') # data wrangling
 library(dplyr)
 library(tidyr)
 
+library(igraph)
+library(ggraph)
+library(tidygraph)
+
 ## ## Data Preparation with the manual compiling lists
 tpf.ipc <- as.tibble(fread('201902_TPF_IPC.txt', stringsAsFactors = TRUE))
 
