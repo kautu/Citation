@@ -6,6 +6,7 @@ library(tidyr)
 library(igraph)
 library(ggraph)
 library(tidygraph)
+library(viridis)
 
 ## ## Data Preparation with the manual compiling lists
 tpf.ipc <- as.tibble(fread('201902_TPF_IPC.txt', stringsAsFactors = TRUE))
@@ -211,7 +212,7 @@ colnames(node.centrality) <- c('node', 'centr_degree', 'centr_eigen')
 node.centrality[,1] <- V(epo.graph)$name
 node.centrality[,2] <- centr_degree(epo.graph)$res
 node.centrality[,3] <- centr_eigen(epo.graph, directed = FALSE)$vector
-node.centrality$membership <- membership(epo.community)
+node.centrality$membership <- membership(epo.community)  # Network Communities from Family Components 
 
 # Identified Communities with the inter-connections
 community.triadic <- epo.triadic %>% 
@@ -227,7 +228,7 @@ community.graph <- simplify(graph_from_data_frame(community.triadic, directed = 
 length(unique(c(community.triadic$membership_source, 
                 community.triadic$membership_target))) / length(epo.community)
 
-## Spectral Clustering
+## Spectral Clustering for the identified Communities
 set.seed(817)
 
 laplacian <- laplacian_matrix(community.graph)
@@ -249,13 +250,14 @@ clustering$size
 
 community.cluster <- graph_from_data_frame(d = as_data_frame(community.graph, what = "edges"),
                                            vertices = category.cluster, directed = FALSE)
-#
+
+# Visualizing the network topology with the hierarchical structures
 ggraph(community.cluster, #layout = 'sugiyama'
        layout = 'centrality', cent = centrality_betweenness() ) +
   geom_edge_link(color = "lightgrey")+ 
-  geom_node_point(aes(size = centrality_eigen(), color = as.factor(cluster)))+
-  geom_node_text(aes(label = name), size = 5, repel = TRUE)+
-  scale_color_discrete() +
+  geom_node_point(aes(size = centrality_eigen(), color = as.factor(cluster), shape = as.factor(cluster %in% c(1,2,6)))) +
+  geom_node_text(aes(label = name), size = 5, repel = TRUE) +
+  scale_color_viridis_d(option = 'C', direction = 1) +
   theme_graph()
 
 
