@@ -7,6 +7,7 @@ library(igraph)
 library(ggraph)
 library(tidygraph)
 library(viridis)
+library(Cairo)
 
 ## ## Data Preparation with the manual compiling lists
 tpf.ipc <- as.tibble(fread('201902_TPF_IPC.txt', stringsAsFactors = TRUE))
@@ -208,7 +209,7 @@ epo.community <- cluster_fast_greedy(epo.graph,
                                      weights = E(epo.graph)$weight) 
 
 node.centrality <- as.data.frame(matrix(0, length(V(epo.graph)), 3))
-colnames(node.centrality) <- c('node', 'centr_degree', 'centr_eigen')
+colnames(node.centrality) <- c('node', 'centr_degree', 'centr_eigen') # Family Component
 node.centrality[,1] <- V(epo.graph)$name
 node.centrality[,2] <- centr_degree(epo.graph)$res
 node.centrality[,3] <- centr_eigen(epo.graph, directed = FALSE)$vector
@@ -244,21 +245,39 @@ clustering <- kmeans(category.grouping[,2:4], 6)
 category.cluster <- as.data.frame(matrix(0,72, 2))
 category.cluster[,1] <- V(community.graph)$name
 category.cluster[,2] <- clustering$cluster
-colnames(category.cluster) <- c('node', 'cluster')
+colnames(category.cluster) <- c('node', 'cluster') # Community Membership
 
-clustering$size
+#clustering$size
+category.cluster$Community <- 'Peripheral'
+category.cluster$Community[which(category.cluster$Cluster %in% c(1,2,6))] <- 'Central'
+
+category.cluster$Cluster <- factor(category.cluster$Cluster, 
+                                   levels = c('1', '2', '6', '3', '4', '5'),
+                                   labels = c('1. Battery Charging',
+                                              '2. Electrodes',
+                                              '6. Combustion Chambers', 
+                                              '3. Gas Turbine', 
+                                              '4. Fuel Cells', 
+                                              '5. Solar Energy'))
 
 community.cluster <- graph_from_data_frame(d = as_data_frame(community.graph, what = "edges"),
                                            vertices = category.cluster, directed = FALSE)
 
 # Visualizing the network topology with the hierarchical structures
+
+CairoPDF('CommunityCluster.pdf', 10.56, 5.1)
+
 ggraph(community.cluster, #layout = 'sugiyama'
        layout = 'centrality', cent = centrality_betweenness() ) +
-  geom_edge_link(color = "lightgrey")+ 
-  geom_node_point(aes(size = centrality_eigen(), color = as.factor(cluster), shape = as.factor(cluster %in% c(1,2,6)))) +
-  geom_node_text(aes(label = name), size = 5, repel = TRUE) +
+  geom_edge_link(color = "lightgrey", size = 3.5)+ 
+ #geom_node_point(aes(size = centrality_eigen(), color = as.factor(cluster), shape = as.factor(cluster %in% c(1,2,6)))) +
+  geom_node_point(aes(size = centrality_eigen(), 
+                      color = interaction(Cluster, Community) )) +
+  geom_node_text(aes(label = name), size = 4.8, repel = TRUE) +
   scale_color_viridis_d(option = 'C', direction = 1) +
   theme_graph()
+
+dev.off()
 
 
 
