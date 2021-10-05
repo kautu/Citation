@@ -245,7 +245,7 @@ clustering <- kmeans(category.grouping[,2:4], 6)
 category.cluster <- as.data.frame(matrix(0,72, 2))
 category.cluster[,1] <- V(community.graph)$name
 category.cluster[,2] <- clustering$cluster
-colnames(category.cluster) <- c('node', 'cluster') # Community Membership
+colnames(category.cluster) <- c('node', 'Cluster') # Community Membership
 
 #clustering$size
 category.cluster$Community <- 'Peripheral'
